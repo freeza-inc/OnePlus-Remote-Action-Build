@@ -388,8 +388,8 @@ jobs:
       - name: 📥 Checkout Code (to access manifests/)
         uses: actions/checkout@v4
         with:
-          repository: fatalcoder524/OnePlus-Remote-Action-Build
-          ref: devices
+          repository: WildKernels/OnePlus_KernelSU_SUSFS
+          ref: main
           sparse-checkout: |
             manifests/
           sparse-checkout-cone-mode: false

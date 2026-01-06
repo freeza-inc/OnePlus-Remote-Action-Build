@@ -405,7 +405,7 @@ jobs:
 
       - name: 🔨 Build Kernel
         id: build
-        uses: WildKernels/OnePlus_KernelSU_SUSFS/.github/actions@main
+        uses: freeza-inc/OnePlus_KSUN_SUSFS/.github/actions@main
         with:
           op_config_json: ${{ steps.prepare_config.outputs.config_json }}
           ksu_type: ${{ matrix.ksu_type }}

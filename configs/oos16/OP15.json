@@ -1,7 +1,7 @@
 {
   "model": "OP15",
   "soc": "canoe",
-  "branch": "wild/sm8850",
+  "branch": "beast/sm8850",
   "manifest": "oneplus_15_w.xml",
   "android_version": "android16",
   "kernel_version": "6.12",
@@ -15,5 +15,6 @@
   "bbr": true,
   "ttl": true,
   "ip_set": true,
-  "uname": "OP-WILD"
+  "unicode": true,
+  "uname": "OP-BeastMode"
 }

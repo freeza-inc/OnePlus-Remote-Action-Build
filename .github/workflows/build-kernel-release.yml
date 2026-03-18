@@ -14,65 +14,7 @@ on:
         options:
           # OOS16
           - OP15_oos16
-          - OP13_oos16
-          - OP13r_oos16
-          - OP13S_oos16
-          - OP13T_oos16
-          - OP12_oos16
-          - OP12r_oos16
-          - OP11_oos16
-          - OP-ACE-6T_oos16
-          - OP-ACE-6_oos16
-          - OP-ACE-5-PRO_oos16
-          - OP-ACE-5_oos16
-          - OP-ACE-3-PRO_oos16
-          - OP-ACE-3V_oos16
-          - OP-ACE-3_oos16
-          - OP-ACE-2-PRO_oos16
-          - OP-ACE-2_oos16
-          - OP-NORD-5_oos16
-          - OP-NORD-4_oos16
-          - OP-PAD-3_oos16
-          - OP-PAD-2-PRO_oos16
-          - OP-PAD-2_oos16
-          - OP-PAD-PRO_oos16
-          - OP-OPEN_oos16
-          # OOS15
-          - OP13-CPH_oos15
-          - OP13-PJZ_oos15
-          - OP13r_oos15
-          - OP13S_oos15
-          - OP13T_oos15
-          - OP12_oos15
-          - OP12r_oos15
-          - OP11_oos15
-          - OP11r_oos15
-          - OP10t_oos15
-          - OP10pro_oos15
-          - OP-ACE-5-PRO_oos15
-          - OP-ACE-5_oos15
-          - OP-ACE-3-PRO_oos15
-          - OP-ACE-3V_oos15
-          - OP-ACE-3_oos15
-          - OP-ACE-2-PRO_oos15
-          - OP-ACE-2_oos15
-          - OP-NORD-5_oos15
-          - OP-NORD-4_oos15
-          - OP-NORD-4-CE_oos15
-          - OP-NORD-CE4-LITE_oos15
-          - OP-PAD-3_oos15
-          - OP-PAD-2-PRO_oos15
-          - OP-PAD-2_oos15
-          - OP-PAD-PRO_oos15
-          - OP-OPEN_oos15
-          # OOS14
-          - OP12_oos14
-          - OP11_oos14
-          - OP11r_oos14
-          - OP10pro_oos14
-          - OP-ACE-3-PRO_oos14
-          - OP-PAD-PRO_oos14
-        default: OP11_oos16
+        default: OP15_oos16
       ksu_options:
         description: 'Enter KernelSU build json'
         required: true
@@ -88,24 +30,8 @@ on:
         description: 'Clean build (no ccache)'
         type: boolean
         default: false
-      android12-5_10_susfs_branch_or_commit:
-        description: 'Enter SusFS Branch or commit hash for android12-5.10'
-        type: string
-        default: ''      
-      android13-5_15_susfs_branch_or_commit:
-        description: 'Enter SusFS Branch or commit hash for android13-5.15'
-        type: string
-        default: ''      
-      android14-6_1_susfs_branch_or_commit:
-        description: 'Enter SusFS Branch or commit hash for android14-6.1'
-        type: string
-        default: ''
-      android15-6_6_susfs_branch_or_commit:
-        description: 'Enter SusFS Branch or commit hash for android15-6.6'
-        type: string
-        default: ''
-      android16-6_12_susfs_branch_or_commit:
-        description: 'Enter SusFS Branch or commit hash for android16-6.12'
+      susfs_branch_or_commit:
+        description: 'Enter SusFS Branch or commit hash for selected device kernel'
         type: string
         default: ''
 
@@ -252,24 +178,16 @@ jobs:
           EOF
           } >> "$GITHUB_STEP_SUMMARY"
           
-          # Display SUSFS config for each kernel version
-          declare -A susfs_inputs=(
-            ["android12-5.10"]="${{ inputs.android12-5_10_susfs_branch_or_commit }}"
-            ["android13-5.15"]="${{ inputs.android13-5_15_susfs_branch_or_commit }}"
-            ["android14-6.1"]="${{ inputs.android14-6_1_susfs_branch_or_commit }}"
-            ["android15-6.6"]="${{ inputs.android15-6_6_susfs_branch_or_commit }}"
-            ["android16-6.12"]="${{ inputs.android16-6_12_susfs_branch_or_commit }}"
-          )
+          matrix_json='${{ steps.set-matrix.outputs.matrix }}'
+          android_ver=$(echo "$matrix_json" | jq -r '.include[0].android_version')
+          kernel_ver=$(echo "$matrix_json" | jq -r '.include[0].kernel_version')
+          key="${android_ver}-${kernel_ver}"
           
-          for key in "android12-5.10" "android13-5.15" "android14-6.1" "android15-6.6" "android16-6.12"; do
-            value="${susfs_inputs[$key]}"
-            
-            if [ -z "$value" ]; then
-              echo "- $key: 🔄 auto (\`gki-$key\`)" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "- $key: 📌 \`$value\`" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
+          if [ -z "${{ inputs.susfs_branch_or_commit }}" ]; then
+            echo "- SusFS Commit Hash: 🔄 auto (\`gki-$key\`)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- SusFS Commit Hash:: 📌 \`${{ inputs.susfs_branch_or_commit }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> **💡 Note:** Empty values auto-map to matching \`gki-androidX-Y.Z\` branches." >> $GITHUB_STEP_SUMMARY
@@ -336,19 +254,19 @@ jobs:
           # Map kernel version to input value
           case "$key" in
             "android12-5.10")
-              susfs_branch="${{ inputs.android12-5_10_susfs_branch_or_commit }}"
+              susfs_branch="${{ inputs.susfs_branch_or_commit }}"
               ;;
             "android13-5.15")
-              susfs_branch="${{ inputs.android13-5_15_susfs_branch_or_commit }}"
+              susfs_branch="${{ inputs.susfs_branch_or_commit }}"
               ;;
             "android14-6.1")
-              susfs_branch="${{ inputs.android14-6_1_susfs_branch_or_commit }}"
+              susfs_branch="${{ inputs.susfs_branch_or_commit }}"
               ;;
             "android15-6.6")
-              susfs_branch="${{ inputs.android15-6_6_susfs_branch_or_commit }}"
+              susfs_branch="${{ inputs.susfs_branch_or_commit }}"
               ;;
             "android16-6.12")
-              susfs_branch="${{ inputs.android16-6_12_susfs_branch_or_commit }}"
+              susfs_branch="${{ inputs.susfs_branch_or_commit }}"
               ;;
             *)
               echo "::error::Unsupported kernel version: $key"

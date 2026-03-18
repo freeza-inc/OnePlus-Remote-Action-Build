@@ -324,7 +324,7 @@ jobs:
           echo "config_json=$(jq -nc --argjson m '${{ toJSON(matrix) }}' '$m | del(.ksu_type, .ksu_hash)')" >> "$GITHUB_OUTPUT"
 
       - name: 📥 Checkout Code (to access manifests/)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: freeza-inc/OnePlus_KSUN_SUSFS
           ref: main

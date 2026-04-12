@@ -534,7 +534,8 @@ jobs:
             
             cat >> $GITHUB_STEP_SUMMARY << EOF
           
-          **SHA256:** \`${{ steps.build.outputs.image_sha256 }}\`
+          **Image SHA256:** \`${{ steps.build.outputs.image_sha256 }}\`
+          **AnyKernel3 Zip SHA256:** \`${{ steps.build.outputs.zip_sha256 }}\`
           EOF
           fi
 

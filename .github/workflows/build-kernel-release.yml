@@ -13,95 +13,8 @@ on:
         type: choice
         options:
           # OOS16
-          - OP15T_oos16
-          - OP15r_oos16
           - OP15_oos16
-          - OP13_oos16
-          - OP13r_oos16
-          - OP13S_oos16
-          - OP13T_oos16
-          - OP12_oos16
-          - OP12r_oos16
-          - OP11_oos16
-          - OP11r_oos16
-          - OP10pro_oos16
-          - OP-TURBO-6V_oos16
-          - OP-TURBO-6_oos16
-          - OP-ACE-6T_oos16
-          - OP-ACE-6_oos16
-          - OP-ACE-5-PRO_oos16
-          - OP-ACE-5_oos16
-          - OP-ACE-5-ULTRA_oos16
-          - OP-ACE-5-RACE_oos16
-          - OP-ACE-3-PRO_oos16
-          - OP-ACE-3V_oos16
-          - OP-ACE-3_oos16
-          - OP-ACE-2-PRO_oos16
-          - OP-ACE-2_oos16
-          - OP-NORD-5_oos16
-          - OP-NORD-CE-5_oos16
-          - OP-NORD-4_oos16
-          - OP-NORD-4-CE_oos16
-          - OP-NORD-CE4-LITE_oos16
-          - OP-PAD-3-SM8750_oos16
-          - OP-PAD-3-MT6897_oos16
-          - OP-PAD-2-PRO_oos16
-          - OP-PAD-2-MT6991_oos16
-          - OP-PAD-2-SM8650_oos16
-          - OP-PAD-PRO_oos16
-          - OP-PAD-MT6983_oos16
-          - OP-OPEN_oos16
-          - OP-PAD-GO-2_oos16
-          # OOS15
-          - OP13-CPH_oos15
-          - OP13-PJZ_oos15
-          - OP13r_oos15
-          - OP13S_oos15
-          - OP13T_oos15
-          - OP12_oos15
-          - OP12r_oos15
-          - OP11_oos15
-          - OP11r_oos15
-          - OP10t_oos15
-          - OP10pro_oos15
-          - OP10r_oos15
-          - OP-ACE-5-PRO_oos15
-          - OP-ACE-5_oos15
-          - OP-ACE-5-ULTRA_oos15
-          - OP-ACE-5-RACE_oos15
-          - OP-ACE-3-PRO_oos15
-          - OP-ACE-3V_oos15
-          - OP-ACE-3_oos15
-          - OP-ACE-2-PRO_oos15
-          - OP-ACE-2V_oos15
-          - OP-ACE-2_oos15
-          - OP-ACE-RACE_oos15
-          - OP-ACE_oos15
-          - OP-NORD-5_oos15
-          - OP-NORD-CE-5_oos15
-          - OP-NORD-4_oos15
-          - OP-NORD-4-CE_oos15
-          - OP-NORD-CE4-LITE_oos15
-          - OP-NORD-3_oos15
-          - OP-PAD-3-SM8750_oos15
-          - OP-PAD-3-MT6897_oos15
-          - OP-PAD-2-PRO_oos15
-          - OP-PAD-2-SM8650_oos15
-          - OP-PAD-PRO_oos15
-          - OP-PAD-MT6983_oos15
-          - OP-PAD-LITE_oos15
-          - OP-OPEN_oos15
-          # OOS14
-          - OP12_oos14
-          - OP11_oos14
-          - OP11r_oos14
-          - OP10pro_oos14
-          - OP10r_oos14
-          - OP-ACE-3-PRO_oos14
-          - OP-ACE-RACE_oos14
-          - OP-ACE_oos14
-          - OP-PAD-PRO_oos14
-        default: OP11_oos16
+        default: OP15_oos16
       ksu_options:
         description: 'Enter KernelSU build json'
         required: true
@@ -117,20 +30,6 @@ on:
         description: 'Clean build (no ccache)'
         type: boolean
         default: false
-      debug:
-        description: 'Enable debug mode: dumping debug related artifacts and show some debug logs'
-        required: false
-        type: boolean
-        default: false
-      mirror_toolchains:
-        description: 'Do you want to sync toolchains before build? [99% runs not required]'
-        required: false
-        type: boolean
-        default: false
-      build_timestamp:
-        description: 'Custom kernel build timestamp for uname -a (e.g. "Tue Feb 10 10:01:02 UTC 2026"). Leave empty for current time.'
-        type: string
-        default: ''
       susfs_branch_or_commit:
         description: 'Enter SusFS Branch or commit hash for selected device kernel'
         type: string
@@ -163,51 +62,65 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Matrix generation"
-          
           input="${{ github.event.inputs.op_model }}"
           ksu_options_raw='${{ github.event.inputs.ksu_options }}'
+          
           if ! ksu_options_normalized=$(echo "$ksu_options_raw" | jq -c 'map(if .type then .type |= ascii_upcase | if .hash == null then if .type == "KSUN" then .hash = "dev" elif .type == "KSU" then .hash = "main" else .hash end else . end else error("No type found") end)' 2>&1); then
             echo "::error::ksu_options validation failed: $ksu_options_normalized"
             exit 1
           fi
           
+          model_part="${input%_*}"
+          os_part="${input##*_}"
+          case "$os_part" in
+            oos14) config_dir="configs/oos14" ;;
+            oos15) config_dir="configs/oos15" ;;
+            oos16) config_dir="configs/oos16" ;;
+            *) echo "::error::Unknown OS part: $os_part"; exit 1 ;;
+          esac
+          
+          if [[ ! -d "$config_dir" ]]; then
+              echo "::error::Config directory does not exist: $config_dir"
+              exit 1
+          fi
+          
+          mapfile -t all_json_files < <(find "$config_dir/" -name "$model_part.json" -print0 2>/dev/null | xargs -0 -n1)
+          
+          if [[ ${#all_json_files[@]} -eq 0 ]]; then
+              echo "::error::No config file found for model '$model_part' in '$config_dir/'"
+              exit 1
+          fi
+          
           echo "[" > matrix.json
-          mapfile -t all_json_files < <(find configs/ -name "*.json" -print0 | xargs -0 -n1)
           for i in "${!all_json_files[@]}"; do
-            file="${all_json_files[$i]}"
-            if [ -f "$file" ]; then
-              jq -r '.' "$file" >> matrix.json
-              if [ $((i+1)) -lt ${#all_json_files[@]} ]; then
-                echo "," >> matrix.json
+              file="${all_json_files[$i]}"
+              if [ -f "$file" ]; then
+                  jq -r '.' "$file" >> matrix.json
+                  if [ $((i+1)) -lt ${#all_json_files[@]} ]; then
+                      echo "," >> matrix.json
+                  fi
               fi
-            fi
           done
           echo "]" >> matrix.json
           
-          model_part="${input%_*}"
-          os_part="${input##*_}"
-          
           os_version=$(echo "$os_part" | tr '[:lower:]' '[:upper:]')
-          
           echo "🔍 Parsing input: $input"
           echo "   Model part: $model_part"
           echo "   OS part: $os_version"
+          echo "   Config dir: $config_dir"
           
           jq_filter="map(select(.model == \"$model_part\" and .os_version == \"$os_version\"))"
-          
           filtered=$(jq -c "$jq_filter" matrix.json)
           count=$(jq 'length' <<<"$filtered")
           
           if [ "$count" -eq 0 ]; then
-            echo "::error::No config files found for model '$model_part' with OS version '$os_version'!"
-            echo ""
-            echo "Available configurations:"
-            jq -r '.[] | "  - \(.model)_\(.os_version | ascii_downcase) (\(.os_version), \(.android_version)-\(.kernel_version))"' matrix.json
-            exit 1
+              echo "::error::No config files found for model '$model_part' with OS version '$os_version' in '$config_dir'!"
+              exit 1
           fi
-          
+
           echo "$filtered" | jq '.' > matrix.json
           
+          # For each device + each ksu option → one combined entry
           merged_matrix=$(jq -n --argjson devices "$filtered" --argjson ksu_list "$ksu_options_normalized" '[ $devices[] as $dev | $ksu_list[] as $ksu | ($dev + {ksu_type: $ksu.type, ksu_hash: $ksu.hash}) ]')
           
           final_count=$(echo "$merged_matrix" | jq -s length)
@@ -281,7 +194,8 @@ jobs:
           merged_matrix=$(echo "$merged_matrix" | jq --arg resolved_sha "$resolved_sha" 'map(.ksu_resolved_hash = $resolved_sha)')
           
           # SUSFS hash fetch
-          GITLAB_PROJECT_PATH="simonpunk/susfs4ksu"
+          SUSFS_REPO="https://gitlab.com/simonpunk/susfs4ksu.git"
+          PROJECT_ID="simonpunk%2fsusfs4ksu"
           android_ver=$(echo "$merged_matrix" | jq -r '.[0].android_version')
           kernel_ver=$(echo "$merged_matrix"  | jq -r '.[0].kernel_version')
           susfs_key="${android_ver}-${kernel_ver}"
@@ -303,32 +217,29 @@ jobs:
           if [ "$susfs_enabled" = "true" ]; then
             echo "🔍 Resolving SUSFS hash for: $susfs_key (ref: $susfs_ref)"
             
-            # Single GraphQL query: fetch commit SHA
-            GL_QUERY="{ project(fullPath: \"${GITLAB_PROJECT_PATH}\") { repository { ch: commit(ref: \"${susfs_ref}\") { sha } } } }"
-
             MAX_RETRIES=3
             RETRY_COUNT=0
             RETRY_DELAY=5
             susfs_resolved=""
             
             until [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
-              RESPONSE=$(curl -s --fail -G "https://gitlab.com/api/graphql" --data-urlencode "query=$GL_QUERY")
+              # We query the commit endpoint which accepts Branch, Tag, or SHA
+              RESULT=$(curl -s --fail \
+                "https://gitlab.com/api/v4/projects/${PROJECT_ID}/repository/commits/${susfs_ref}")
               EXIT_CODE=$?
               
-              if [ $EXIT_CODE -eq 0 ] && [ -n "$RESPONSE" ]; then
-                susfs_resolved=$(echo "$RESPONSE" | jq -r '.data.project.repository.ch.sha // empty')
-                if [ -n "$susfs_resolved" ] && [ "$susfs_resolved" != "null" ]; then
-                  echo "  ✅ Resolved: $susfs_key → $susfs_resolved"
-                  break
-                fi
+              if [ $EXIT_CODE -eq 0 ] && [ -n "$RESULT" ]; then
+                susfs_resolved=$(echo "$RESULT" | jq -r '.id')
+                echo "  ✅ Resolved: $susfs_key → $susfs_resolved"
+                break
               fi
               
               RETRY_COUNT=$((RETRY_COUNT + 1))
-              echo "::warning::GitLab GraphQL API failed (Attempt $RETRY_COUNT/$MAX_RETRIES). Retrying..."
+              echo "::warning::GitLab API failed (Attempt $RETRY_COUNT/$MAX_RETRIES). Retrying..."
               sleep $RETRY_DELAY
             done
             
-            # Final Validation — SUSFS hash
+            # Final Validation
             if [ -z "$susfs_resolved" ] || [ "$susfs_resolved" = "null" ]; then
               echo "::error::Could not resolve SUSFS ref '$susfs_ref' for $susfs_key on GitLab."
               exit 1
@@ -374,13 +285,6 @@ jobs:
             fi
           fi
           
-          build_ts_input="${{ inputs.build_timestamp }}"
-          if [ -z "$build_ts_input" ]; then
-            build_ts_display="⏱️ auto (current build time)"
-          else
-            build_ts_display="📌 \`$build_ts_input\`"
-          fi
-          
           {
             cat << 'EOF'
           ## 🎯 Build Plan
@@ -392,13 +296,10 @@ jobs:
           EOF
           
             echo "- KSU Config: $ksu_display"
-            echo "- Build Timestamp: $build_ts_display"
           
             cat << 'EOF'
           - Optimization: ${{ inputs.optimize_level }}
           - Clean Build/No Ccache: ${{ inputs.clean_build && '✅ Yes' || '❌ No' }}
-          - Create Debug Artifacts: ${{ inputs.debug && '✅ Yes' || '❌ No' }}
-          - Sync toolchains: ${{ inputs.mirror_toolchains && '✅ Yes' || '❌ No' }}
           
           **SUSFS Configuration:**
           EOF
@@ -427,20 +328,10 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "> **⚠️ Android-Kernel Filter:** Only OOS15 and OOS16 devices will be built for \`${{ inputs.op_model }}\`" >> $GITHUB_STEP_SUMMARY
           fi
-  
-  mirror_toolchain:
-    needs: set-op-model
-    if: ${{ inputs.mirror_toolchains }}
-    uses: ./.github/workflows/mirror-toolchains.yml
-    secrets: inherit
 
   build:
     name: build (${{ matrix.model }}, ${{ matrix.soc }}, ${{ matrix.branch }}, ${{ matrix.manifest }}, ${{ matrix.android_version }}, ${{ matrix.kernel_version }}, ${{ matrix.os_version }}, ${{ matrix.ksu_type }})
-    needs: [set-op-model, mirror_toolchain]
-    if: |
-      !cancelled() &&
-      needs.set-op-model.result == 'success' &&
-      (needs.mirror_toolchain.result == 'success' || needs.mirror_toolchain.result == 'skipped')
+    needs: set-op-model
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -451,7 +342,34 @@ jobs:
     steps:
       - name: 🧹 Emergency Disk Cleanup
         if: ${{ matrix.disk_cleanup }}
-        uses: WildKernels/OnePlus_KernelSU_SUSFS/.github/actions/disk-cleanup@main
+        run: |
+          echo "::group::Disk Usage Before Cleanup"
+          df -h
+          echo "::endgroup::"
+          
+          echo "::group::Removing Unnecessary Software"
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo apt-get clean
+          if command -v docker >/dev/null 2>&1; then
+            docker rmi $(docker images -q) 2>/dev/null || true
+          fi
+          echo "::endgroup::"
+          
+          echo "::group::Disk Usage After Cleanup"
+          df -h
+          AVAIL=$(df -h / | awk 'NR==2 {print $4}')
+          echo "✅ Available space: $AVAIL"
+          echo "::endgroup::"
+
+      - name: Download Apache Arrow's util_free_space.sh
+        if: ${{ matrix.disk_cleanup }}
+        run: |
+          curl -L -o util_free_space.sh https://raw.githubusercontent.com/apache/arrow/main/ci/scripts/util_free_space.sh
+          chmod +x util_free_space.sh
+          ./util_free_space.sh
 
       - name: Install Minimal Dependencies
         run: |
@@ -461,75 +379,30 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             git curl ca-certificates build-essential clang lld flex bison \
             libelf-dev libssl-dev libncurses-dev zlib1g-dev liblz4-tool \
-            libxml2-utils rsync unzip dwarves file python3 ccache jq bc dos2unix kmod libdw-dev elfutils pigz
+            libxml2-utils rsync unzip dwarves file python3 ccache jq bc dos2unix kmod libdw-dev elfutils
           sudo apt-get clean
           echo "✅ Dependencies installed"
           echo "::endgroup::"
 
-      - name: Install ccache with ECS by cctv18
+      - name: 📦 Disk usage (pre-build)
         run: |
-          # Install ccache with ECS by cctv18
-          set -euo pipefail
-          echo "::group::Install ccache with ECS"
-          curl -LfsS --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 --tcp-fastopen -H "User-Agent: Mozilla/5.0" "https://github.com/WildKernels/kernel_patches/raw/refs/heads/main/ccache/ccache-x86-64" -o ccache
-          sudo cp -f ./ccache /usr/bin/ccache
-          sudo chmod +x /usr/bin/ccache
-          rm -f ./ccache
-
-          echo "[DEBUG] Ccache version : $(ccache --version)"
+          echo "::group::Disk usage pre-build"
+          df -h /
+          du -sh "$GITHUB_WORKSPACE" 2>/dev/null || true
+          sudo rm -rf /tmp/* || true
           echo "::endgroup::"
 
-      - name: ♻️ Configure ccache & LTO cache (bounded)
+      - name: ♻️ Configure ccache (bounded)
+        if: ${{ inputs.clean_build != true }}
         run: |
-          echo "::group::Configure ccache environment"
-          set -euo pipefail
           if command -v ccache >/dev/null 2>&1; then
-            CACHE_DIR="${{ github.workspace }}/.ccache"
-            LDCACHE_DIR="${{ github.workspace }}/.ld_cache"
-            CCACHE_LOG="${{ github.workspace }}/ccache.log"
-            mkdir -p "$CACHE_DIR"
-            mkdir -p "$LDCACHE_DIR"
-
-            SETTINGS=(
-              "CCACHE_DIR=$CACHE_DIR"
-              "LDCACHE_DIR=$LDCACHE_DIR"
-              "CCACHE_MAXSIZE=0"
-              "CCACHE_COMPILERCHECK=content"
-              "CCACHE_BASEDIR=${GITHUB_WORKSPACE}"
-              "CCACHE_NOHASHDIR=true"
-              "CCACHE_IGNOREOPTIONS=--sysroot*"
-              "CCACHE_COMPRESSION=true"
-              "CCACHE_COMPRESSION_LEVEL=3"
-              "CCACHE_DIRECT=true"
-              "CCACHE_FILE_CLONE=true"
-              "CCACHE_INODE_CACHE=true"
-              "CCACHE_IS_KERNEL_COMPILING=true"
-              "CCACHE_UMASK=002"
-              "CCACHE_SLOPPINESS=file_macro,time_macros,include_file_mtime,include_file_ctime,pch_defines,system_headers,locale"
-            )
-            
-            for setting in "${SETTINGS[@]}"; do
-              export "$setting"
-              echo "$setting" >> "$GITHUB_ENV"
-            done
-
-            if [ "${{ inputs.debug }}" == "true" ]; then
-              export "CCACHE_LOGFILE=$CCACHE_LOG"
-              echo "CCACHE_LOGFILE=$CCACHE_LOG" >> "$GITHUB_ENV"
-            fi
-
-            if ccache --help 2>&1 | grep -q 'depend_mode'; then
-              export CCACHE_DEPEND=true
-              echo "CCACHE_DEPEND=true" >> "$GITHUB_ENV"
-            fi
-            
-            echo "✅ ccache configured successfully"
-            echo "Current ccache configuration:"
-            ccache -p
-          else
-            echo "ccache not found, skipping configuration."
+            echo "::group::ccache configuration"
+            ccache -o max_size=1.0G
+            ccache -o compression=true
+            ccache -o compression_level=3
+            ccache -s
+            echo "::endgroup::"
           fi
-          echo "::endgroup::"
 
       - name: 🧹 Prepare op_config_json (without KSU fields)
         id: prepare_config
@@ -540,7 +413,7 @@ jobs:
       - name: 📥 Checkout Code (to access manifests/)
         uses: actions/checkout@v6
         with:
-          repository: WildKernels/OnePlus_KernelSU_SUSFS
+          repository: freeza-inc/OnePlus_KSUN_SUSFS
           ref: main
           sparse-checkout: |
             manifests/
@@ -548,17 +421,14 @@ jobs:
 
       - name: 🔨 Build Kernel
         id: build
-        uses: WildKernels/OnePlus_KernelSU_SUSFS/.github/actions/build-kernel@main
+        uses: freeza-inc/OnePlus_KSUN_SUSFS/.github/actions@main
         with:
           op_config_json: ${{ steps.prepare_config.outputs.config_json }}
           ksu_type: ${{ matrix.ksu_type }}
           ksu_branch_or_hash: ${{ matrix.ksu_resolved_hash }}
           susfs_commit_hash_or_branch: ${{ matrix.susfs_resolved_hash }}
           optimize_level: ${{ inputs.optimize_level }}
-          build_timestamp: ${{ inputs.build_timestamp }}
           clean: ${{ inputs.clean_build }}
-          debug: ${{ inputs.debug }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 📊 Build statistics
         id: build-stat
@@ -664,7 +534,8 @@ jobs:
             
             cat >> $GITHUB_STEP_SUMMARY << EOF
           
-          **SHA256:** \`${{ steps.build.outputs.image_sha256 }}\`
+          **Image SHA256:** \`${{ steps.build.outputs.image_sha256 }}\`
+          **AnyKernel3 Zip SHA256:** \`${{ steps.build.outputs.zip_sha256 }}\`
           EOF
           fi
 

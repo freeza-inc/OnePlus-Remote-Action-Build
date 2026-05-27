@@ -413,7 +413,7 @@ jobs:
       - name: 📥 Checkout Code (to access manifests/)
         uses: actions/checkout@v6
         with:
-          repository: freeza-inc/OnePlus_KSUN_SUSFS
+          repository: freeza-inc/OnePlus_KSUN_SUSFS_v1
           ref: main
           sparse-checkout: |
             manifests/
@@ -421,7 +421,7 @@ jobs:
 
       - name: 🔨 Build Kernel
         id: build
-        uses: freeza-inc/OnePlus_KSUN_SUSFS/.github/actions@main
+        uses: freeza-inc/OnePlus_KSUN_SUSFS_v1/.github/actions@main
         with:
           op_config_json: ${{ steps.prepare_config.outputs.config_json }}
           ksu_type: ${{ matrix.ksu_type }}

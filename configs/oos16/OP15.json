@@ -16,7 +16,7 @@
   "hmbird": false,
   "susfs": true,
   "ds": false,
-  "bbg": false,
+  "bbg": true,
   "bbr": true,
   "ttl": true,
   "ip_set": true,

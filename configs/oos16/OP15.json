@@ -23,6 +23,6 @@
   "ip_set": true,
   "unicode": true,
   "ntsync": true,
-  "zeromount": true,
+  "zeromount": false,
   "uname": "OP-BeastMode"
 }

@@ -15,12 +15,17 @@
   "disk_cleanup": false,
   "hmbird": false,
   "susfs": true,
+  "opt": false,
   "ds": true,
   "bbg": true,
   "bbr": true,
+  "bbr3": false,
   "ttl": true,
   "ip_set": true,
   "unicode": true,
   "ntsync": true,
+  "zeromount": false,
+  "nomount": true,
+  "blacklist_modules": "",
   "uname": "OP-WILD"
 }
